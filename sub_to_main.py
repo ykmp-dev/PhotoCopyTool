@@ -10,12 +10,16 @@ import json
 import pyexiv2
 from PIL import Image
 from ttkthemes import ThemedStyle
+import winreg
 
 class CopyImagesApp:
     def __init__(self, app):
         self.app = app
         app.title("記念サブ＝＞メイン")
         app.geometry("450x800")
+        
+        # レジストリキー設定
+        self.registry_key = r"SOFTWARE\PhotoCopyTool"
         
         # アイコンを設定（タスクバー表示用）
         try:
@@ -45,7 +49,7 @@ class CopyImagesApp:
         self.style = ThemedStyle(self.app)
         self.style.set_theme("yaru")  # テーマを選択（例: "plastik"）
         
-        saved_settings = self.load_settings_from_json()
+        saved_settings = self.load_settings_from_registry()
         if saved_settings:
             self.source_folder1_path = saved_settings.get("source_folder1_path", "")
             self.source_folder2_path = saved_settings.get("source_folder2_path", "")
@@ -371,23 +375,30 @@ class CopyImagesApp:
         copy_thread.start()
 
     def on_closing(self):
-        self.save_settings_to_json()
+        self.save_settings_to_registry()
         self.app.destroy()
 
-    def save_settings_to_json(self):
-        settings = {
-            "source_folder1_path": self.source_folder1_path,
-            "source_folder2_path": self.source_folder2_path,
-            "destination_folder_path": self.destination_folder_path
-        }
-        with open("settings.json", "w") as json_file:
-            json.dump(settings, json_file)
-
-    def load_settings_from_json(self):
+    def save_settings_to_registry(self):
         try:
-            with open("settings.json", "r") as json_file:
-                return json.load(json_file)
-        except FileNotFoundError:
+            # HKEY_CURRENT_USERに設定を保存
+            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, self.registry_key)
+            winreg.SetValueEx(key, "source_folder1_path", 0, winreg.REG_SZ, self.source_folder1_path)
+            winreg.SetValueEx(key, "source_folder2_path", 0, winreg.REG_SZ, self.source_folder2_path)
+            winreg.SetValueEx(key, "destination_folder_path", 0, winreg.REG_SZ, self.destination_folder_path)
+            winreg.CloseKey(key)
+        except Exception as e:
+            print(f"レジストリ保存エラー: {e}")
+
+    def load_settings_from_registry(self):
+        try:
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.registry_key)
+            settings = {}
+            settings["source_folder1_path"] = winreg.QueryValueEx(key, "source_folder1_path")[0]
+            settings["source_folder2_path"] = winreg.QueryValueEx(key, "source_folder2_path")[0]
+            settings["destination_folder_path"] = winreg.QueryValueEx(key, "destination_folder_path")[0]
+            winreg.CloseKey(key)
+            return settings
+        except (FileNotFoundError, OSError, Exception):
             return {}
 
     def select_source_folder1(self):
@@ -395,21 +406,21 @@ class CopyImagesApp:
         if folder_path:
             self.source_folder1_path = folder_path
             self.source1_label.config(text=f"セレクトPC側: {os.path.basename(folder_path)}")
-            self.save_settings_to_json()
+            self.save_settings_to_registry()
 
     def select_source_folder2(self):
         folder_path = filedialog.askdirectory(title="記念スタジオ側フォルダを選択してください")
         if folder_path:
             self.source_folder2_path = folder_path
             self.source2_label.config(text=f"記念スタジオ側: {os.path.basename(folder_path)}")
-            self.save_settings_to_json()
+            self.save_settings_to_registry()
 
     def select_destination_folder(self):
         folder_path = filedialog.askdirectory(title="メインPCフォルダを選択してください")
         if folder_path:
             self.destination_folder_path = folder_path
             self.destination_label.config(text=f"メインPC: {os.path.basename(folder_path)}")
-            self.save_settings_to_json()
+            self.save_settings_to_registry()
 
     def update_folder_labels(self):
         if hasattr(self, 'source1_label'):
