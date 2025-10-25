@@ -5,6 +5,7 @@ import shutil
 from datetime import datetime
 import threading
 import os
+import sys
 import json
 import pyexiv2
 from PIL import Image
@@ -14,7 +15,25 @@ class CopyImagesApp:
     def __init__(self, app):
         self.app = app
         app.title("記念サブ＝＞メイン")
-        app.geometry("450x700")
+        app.geometry("450x800")
+        
+        # アイコンを設定（タスクバー表示用）
+        try:
+            # 実行ファイルと同じディレクトリのアイコンを探す
+            if getattr(sys, 'frozen', False):
+                # PyInstallerでパッケージ化されている場合
+                base_path = sys._MEIPASS
+            else:
+                # 通常のPythonスクリプトの場合
+                base_path = os.path.dirname(os.path.abspath(__file__))
+            
+            icon_path = os.path.join(base_path, "icon.ico")
+            if os.path.exists(icon_path):
+                app.iconbitmap(icon_path)
+            elif os.path.exists("icon.ico"):
+                app.iconbitmap("icon.ico")
+        except:
+            pass
 
         self.copy_in_progress = False
         self.source_folder1_path = ""
@@ -28,8 +47,6 @@ class CopyImagesApp:
         
         saved_settings = self.load_settings_from_json()
         if saved_settings:
-            self.year_entry.insert(0, saved_settings.get("year", ""))
-            self.period_combobox.set(saved_settings.get("period", ""))
             self.source_folder1_path = saved_settings.get("source_folder1_path", "")
             self.source_folder2_path = saved_settings.get("source_folder2_path", "")
             self.destination_folder_path = saved_settings.get("destination_folder_path", "")
@@ -86,51 +103,36 @@ class CopyImagesApp:
         spacer_above = ttk.Label(self.app, text="", font=("Meiryo", 12))
         spacer_above.grid(row=4, column=0, pady=20)
 
-        folder_number_label = ttk.Label(self.app, text="年度は2桁で入力", font=("Meiryo", 10))
-        folder_number_label.grid(row=5, column=0, columnspan=2, sticky="n")
-        self.app.grid_columnconfigure(0, weight=1)  # 列0を拡張することでウィジェットが中央に配置される
-    
-        frame = ttk.Frame(self.app)
-        frame.grid(row=6, column=0, columnspan=4, sticky="n", pady=5)
-        self.app.grid_columnconfigure(0, weight=1)  # 列0を拡張することでウィジェットが中央に配置される
-
-        year_label = ttk.Label(frame, text="年度:", font=("Meiryo", 12))
-        year_label.grid(row=0, column=0, sticky="e")
-
-        self.year_entry = ttk.Entry(frame, font=("Meiryo", 12), width=2)
-        self.year_entry.grid(row=0, column=1, sticky="w")
-
-        period_label = ttk.Label(frame, text="期:", font=("Meiryo", 12))
-        period_label.grid(row=0, column=2, sticky="e")
-
-        self.period_combobox = ttk.Combobox(frame, values=["上", "下"], font=("Meiryo", 12), width=2)
-        self.period_combobox.grid(row=0, column=3, sticky="w")
-
         spacer_folders = ttk.Label(self.app, text="", font=("Meiryo", 8))
-        spacer_folders.grid(row=7, column=0, pady=10)
+        spacer_folders.grid(row=5, column=0, pady=10)
+
+        folder_instruction_label = ttk.Label(self.app, text="対象の年度フォルダを選択してください。", font=("Meiryo", 12), foreground="blue")
+        folder_instruction_label.grid(row=6, column=0, columnspan=2, sticky="n")
 
         folder_frame = ttk.LabelFrame(self.app, text="フォルダ設定")
-        folder_frame.grid(row=8, column=0, columnspan=2, pady=5, padx=10, sticky="ew")
+        folder_frame.grid(row=7, column=0, columnspan=2, pady=5, padx=10, sticky="ew")
 
-        source1_button = ttk.Button(folder_frame, text="ソース1選択", command=self.select_source_folder1, width=12)
+        source1_button = ttk.Button(folder_frame, text="セレクトPC側", command=self.select_source_folder1, width=12)
         source1_button.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-        self.source1_label = ttk.Label(folder_frame, text="ソース1: 未選択", font=("Meiryo", 9))
+        self.source1_label = ttk.Label(folder_frame, text="セレクトPC側: 未選択", font=("Meiryo", 9))
         self.source1_label.grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
-        source2_button = ttk.Button(folder_frame, text="ソース2選択", command=self.select_source_folder2, width=12)
+        source2_button = ttk.Button(folder_frame, text="記念スタジオ側", command=self.select_source_folder2, width=12)
         source2_button.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
-        self.source2_label = ttk.Label(folder_frame, text="ソース2: 未選択", font=("Meiryo", 9))
+        self.source2_label = ttk.Label(folder_frame, text="記念スタジオ側: 未選択", font=("Meiryo", 9))
         self.source2_label.grid(row=1, column=1, padx=5, pady=5, sticky="w")
 
-        dest_button = ttk.Button(folder_frame, text="コピー先選択", command=self.select_destination_folder, width=12)
+        dest_button = ttk.Button(folder_frame, text="メインPC", command=self.select_destination_folder, width=12)
         dest_button.grid(row=2, column=0, padx=5, pady=5, sticky="ew")
-        self.destination_label = ttk.Label(folder_frame, text="コピー先: 未選択", font=("Meiryo", 9))
+        self.destination_label = ttk.Label(folder_frame, text="メインPC: 未選択", font=("Meiryo", 9))
         self.destination_label.grid(row=2, column=1, padx=5, pady=5, sticky="w")
 
         folder_frame.grid_columnconfigure(1, weight=1)
 
-        info_label = ttk.Label(self.app, text="セレクトで星５のみを抽出してコピーしています。\nコピー完了後は必ず伝票と目視で\n記念メインを確認してください。", font=("Meiryo", 10), justify="center", foreground="black", background="yellow")
-        info_label.grid(row=11, column=0, columnspan=2, sticky="n")
+        info_frame = tk.Frame(self.app, bg="yellow")
+        info_frame.grid(row=10, column=0, columnspan=2, sticky="ew", pady=5, padx=10)
+        info_label = tk.Label(info_frame, text="セレクトで星５のみを抽出してコピーしています。\nコピー完了後は必ず伝票と目視で\n記念メインを確認してください。", font=("Meiryo", 10), justify="center", foreground="black", background="yellow")
+        info_label.pack(expand=True)
 
     def add_notification(self, message):
         timestamp = datetime.now().strftime("[%H:%M:%S] ")
@@ -153,14 +155,19 @@ class CopyImagesApp:
     def find_files_recursively(self, base_folder):
         all_files = []
 
-        for root, dirs, files in os.walk(base_folder):
-              # .DS_Store ファイルを除外
-            dirs[:] = [d for d in dirs if not d.startswith('.')]
-            files = [f for f in files if not f.startswith('.DS_Store')]
+        try:
+            for root, dirs, files in os.walk(base_folder):
+                  # .DS_Store ファイルを除外
+                dirs[:] = [d for d in dirs if not d.startswith('.')]
+                files = [f for f in files if not f.startswith('.DS_Store')]
 
-            for file in files:
-                file_path = os.path.join(root, file)
-                all_files.append(file_path)
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    all_files.append(file_path)
+        except OSError as e:
+            error_msg = f"フォルダアクセスエラー {base_folder}: {str(e)} (errno: {getattr(e, 'errno', 'unknown')})"
+            self.add_notification(error_msg)
+            print(f"os.walk error: {e}")
 
         return all_files
     
@@ -194,23 +201,45 @@ class CopyImagesApp:
             files = [f for f in files if not f.startswith('.DS_Store')]
 
             for file in files:
-                if file.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
+                if file.lower().endswith(('.jpg', '.jpeg')):
                     image_files.append(os.path.join(root, file))
         return image_files
 
     def get_xmp_rating(self, image_path):
+        import tempfile
+        import shutil
+        
         try:
-            with pyexiv2.Image(image_path) as set_image:
-                xmp = set_image.read_xmp()
-                if 'Xmp.xmp.Rating' in xmp:
-                    rating = xmp['Xmp.xmp.Rating']
-                    return rating
-                else:
-                    self.add_notification(f"{image_path} の XMP レーティングが見つかりませんでした。")
+            # pyexiv2のログレベルを設定してSony1警告を抑制
+            pyexiv2.set_log_level(4)  # エラーレベルのみ
+            
+            # 日本語パスの問題を解決するため一時ファイルにコピー
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
+                temp_path = temp_file.name
+            
+            # 元ファイルを一時ファイルにコピー
+            shutil.copy2(image_path, temp_path)
+            
+            try:
+                with pyexiv2.Image(temp_path) as set_image:
+                    xmp = set_image.read_xmp()
+                    if 'Xmp.xmp.Rating' in xmp:
+                        rating = xmp['Xmp.xmp.Rating']
+                        return rating
+                    else:
+                        # レーティングが見つからない場合は0を返す
+                        return "0"
+            finally:
+                # 一時ファイルを削除
+                try:
+                    os.unlink(temp_path)
+                except:
+                    pass
+                    
         except Exception as e:
-            error_message = f"Error while extracting XMP Rating from {image_path}: {str(e)}"
-            self.add_notification(error_message)
-        return None
+            error_message = str(e)
+            self.add_notification(f"Error while extracting XMP Rating from {image_path}: {error_message}")
+        return "0"
 
 
 
@@ -220,41 +249,52 @@ class CopyImagesApp:
         for folder_number in folder_numbers:
             source_folder1 = self.find_folder_with_number_recursive_common(source_folder1_path, folder_number)
             source_folder2 = self.find_folder_with_number_recursive_common(source_folder2_path, folder_number)
-            print(f"Source folder1: {source_folder1}")
-            print(f"Source folder2: {source_folder2}")
+            
             if source_folder1 is None or source_folder2 is None:
-                self.add_notification(f"警告: 指定された4桁の数字がソースフォルダ内で見つかりませんでした.")
-                return
+                self.add_notification(f"警告: 撮影No.{folder_number}のフォルダが見つかりませんでした.")
+                continue
 
-            total_images = 0
+            self.add_notification(f"撮影No.{folder_number}の処理を開始します...")
+            
+            # 全ファイルを取得して進捗計算用にカウント
+            all_select_files = self.find_files_recursively(source_folder1)
+            total_files = len(all_select_files)
+            processed_files = 0
+            rating5_found = 0
             copied_images = 0
 
-            for image_path in self.find_files_recursively(source_folder2):
+            self.add_notification(f"セレクト側ファイル数: {total_files}枚")
+
+            for image_path in all_select_files:
                 if not self.copy_in_progress:
                     self.add_notification("コピー処理が中止されました.")
                     return
-                rating2 = self.get_xmp_rating(image_path)
-                if rating2 == "5":
-                    total_images += 1
-                    image_filename2 = os.path.basename(image_path)
-                    corresponding_image = os.path.join(source_folder1, image_filename2)
+                
+                processed_files += 1
+                self.add_notification(f"進捗: {processed_files}/{total_files} - {os.path.basename(image_path)}")
+                
+                rating1 = self.get_xmp_rating(image_path)
+                if rating1 == "5":
+                    rating5_found += 1
+                    image_filename1 = os.path.basename(image_path)
+                    corresponding_image = os.path.join(source_folder2, image_filename1)
                     corresponding_image = os.path.normpath(corresponding_image)
+                    
                     if os.path.exists(corresponding_image):
-                        # 一時フォルダ内にコピー先フォルダを作成
-                        temp_folder = os.path.join(self.get_temp_folder(), os.path.basename(source_folder1))
+                        # 一時フォルダ内にコピー先フォルダを作成（Studio側のフォルダ名を使用）
+                        temp_folder = os.path.join(self.get_temp_folder(), os.path.basename(source_folder2))
                         if not os.path.exists(temp_folder):
                             os.makedirs(temp_folder, exist_ok=True)
 
-                        destination_path = os.path.join(temp_folder, image_filename2)
+                        destination_path = os.path.join(temp_folder, image_filename1)
                         shutil.copyfile(corresponding_image, destination_path)
                         copied_images += 1
-                        self.update_copy_progress(folder_number, image_filename2)
+                        self.add_notification(f"★コピー完了: {image_filename1}")
                     else:
-                        self.add_notification(f"対応する画像が存在しません: {corresponding_image}")
+                        self.add_notification(f"対応する画像が存在しません: {image_filename1}")
 
             self.move_temp_folders(destination_folder_path)
-            self.add_notification(f"見つかった写真の枚数: {total_images}")
-            self.add_notification(f"コピーした枚数: {copied_images}")
+            self.add_notification(f"撮影No.{folder_number}完了 - レーティング5: {rating5_found}枚, コピー: {copied_images}枚")
 
     def get_temp_folder(self):
         # アプリケーションの実行ディレクトリを取得
@@ -266,6 +306,11 @@ class CopyImagesApp:
     def move_temp_folders(self, destination_folder_path):
         # 一時フォルダからコピー先フォルダへ移動
         temp_folder = self.get_temp_folder()
+        
+        # 一時フォルダが存在しない場合は何もしない
+        if not os.path.exists(temp_folder):
+            return
+            
         for temp_subfolder in os.listdir(temp_folder):
             temp_subfolder_path = os.path.join(temp_folder, temp_subfolder)
             if os.path.exists(temp_subfolder_path) and os.path.isdir(temp_subfolder_path):
@@ -296,12 +341,31 @@ class CopyImagesApp:
         self.add_notification("コピー処理を開始します...")
 
         def copy_images_thread():
-            print(f"destination_folder_path: {self.destination_folder_path}")
-            print(f"Source folder 1 path: {self.source_folder1_path}")
-            print(f"Source folder 2 path: {self.source_folder2_path}")
-            self.copy_images(folder_numbers, self.source_folder1_path, self.source_folder2_path, self.destination_folder_path)
-            self.add_notification("コピー処理が完了しました.")
-            self.copy_in_progress = False
+            try:
+                print(f"destination_folder_path: {self.destination_folder_path}")
+                print(f"Source folder 1 path: {self.source_folder1_path}")
+                print(f"Source folder 2 path: {self.source_folder2_path}")
+                
+                # フォルダアクセス可能性をチェック
+                self.add_notification("フォルダへのアクセスを確認中...")
+                if not os.path.exists(self.source_folder1_path):
+                    self.add_notification(f"エラー: セレクトPC側フォルダにアクセスできません: {self.source_folder1_path}")
+                    return
+                if not os.path.exists(self.source_folder2_path):
+                    self.add_notification(f"エラー: 記念スタジオ側フォルダにアクセスできません: {self.source_folder2_path}")
+                    return
+                if not os.path.exists(self.destination_folder_path):
+                    self.add_notification(f"エラー: メインPCフォルダにアクセスできません: {self.destination_folder_path}")
+                    return
+                
+                self.copy_images(folder_numbers, self.source_folder1_path, self.source_folder2_path, self.destination_folder_path)
+                self.add_notification("コピー処理が完了しました.")
+            except Exception as e:
+                error_msg = f"コピー処理中にエラーが発生しました: {str(e)} (errno: {getattr(e, 'errno', 'unknown')})"
+                self.add_notification(error_msg)
+                print(f"Error details: {e}")
+            finally:
+                self.copy_in_progress = False
 
         copy_thread = threading.Thread(target=copy_images_thread)
         copy_thread.start()
@@ -312,8 +376,6 @@ class CopyImagesApp:
 
     def save_settings_to_json(self):
         settings = {
-            "year": self.year_entry.get(),
-            "period": self.period_combobox.get(),
             "source_folder1_path": self.source_folder1_path,
             "source_folder2_path": self.source_folder2_path,
             "destination_folder_path": self.destination_folder_path
@@ -329,44 +391,44 @@ class CopyImagesApp:
             return {}
 
     def select_source_folder1(self):
-        folder_path = filedialog.askdirectory(title="ソースフォルダ1を選択してください")
+        folder_path = filedialog.askdirectory(title="セレクトPC側フォルダを選択してください")
         if folder_path:
             self.source_folder1_path = folder_path
-            self.source1_label.config(text=f"ソース1: {os.path.basename(folder_path)}")
+            self.source1_label.config(text=f"セレクトPC側: {os.path.basename(folder_path)}")
             self.save_settings_to_json()
 
     def select_source_folder2(self):
-        folder_path = filedialog.askdirectory(title="ソースフォルダ2を選択してください")
+        folder_path = filedialog.askdirectory(title="記念スタジオ側フォルダを選択してください")
         if folder_path:
             self.source_folder2_path = folder_path
-            self.source2_label.config(text=f"ソース2: {os.path.basename(folder_path)}")
+            self.source2_label.config(text=f"記念スタジオ側: {os.path.basename(folder_path)}")
             self.save_settings_to_json()
 
     def select_destination_folder(self):
-        folder_path = filedialog.askdirectory(title="コピー先フォルダを選択してください")
+        folder_path = filedialog.askdirectory(title="メインPCフォルダを選択してください")
         if folder_path:
             self.destination_folder_path = folder_path
-            self.destination_label.config(text=f"コピー先: {os.path.basename(folder_path)}")
+            self.destination_label.config(text=f"メインPC: {os.path.basename(folder_path)}")
             self.save_settings_to_json()
 
     def update_folder_labels(self):
         if hasattr(self, 'source1_label'):
             if self.source_folder1_path:
-                self.source1_label.config(text=f"ソース1: {os.path.basename(self.source_folder1_path)}")
+                self.source1_label.config(text=f"セレクトPC側: {os.path.basename(self.source_folder1_path)}")
             else:
-                self.source1_label.config(text="ソース1: 未選択")
+                self.source1_label.config(text="セレクトPC側: 未選択")
         
         if hasattr(self, 'source2_label'):
             if self.source_folder2_path:
-                self.source2_label.config(text=f"ソース2: {os.path.basename(self.source_folder2_path)}")
+                self.source2_label.config(text=f"記念スタジオ側: {os.path.basename(self.source_folder2_path)}")
             else:
-                self.source2_label.config(text="ソース2: 未選択")
+                self.source2_label.config(text="記念スタジオ側: 未選択")
         
         if hasattr(self, 'destination_label'):
             if self.destination_folder_path:
-                self.destination_label.config(text=f"コピー先: {os.path.basename(self.destination_folder_path)}")
+                self.destination_label.config(text=f"メインPC: {os.path.basename(self.destination_folder_path)}")
             else:
-                self.destination_label.config(text="コピー先: 未選択")
+                self.destination_label.config(text="メインPC: 未選択")
 
 if __name__ == "__main__":
     app = tk.Tk()
